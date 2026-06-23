@@ -1,11 +1,12 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import AppShell from '@/components/layout/AppShell.vue'
+import { Toaster } from '@/components/ui/sonner'
+import { initDarkMode } from '@/composables/useDarkMode'
+
+initDarkMode()
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <AppShell />
+  <Toaster rich-colors close-button />
 </template>
-
-<style scoped></style>
