@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Menu } from '@lucide/vue'
+import { Calendar, LogOut, Menu, PhoneCall, Users } from '@lucide/vue'
+import type { Component } from 'vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 
@@ -17,12 +18,22 @@ import { cn } from '@/lib/utils'
 const route = useRoute()
 const sheetOpen = ref(false)
 
-const navItems = [
-  { name: 'team-members', label: 'Team Members', to: '/' },
-  { name: 'leave-requests', label: 'Leave Requests', to: '/leave-requests' },
-  { name: 'calendar', label: 'Calendar', to: '/calendar' },
-  { name: 'on-call', label: 'On-Call', to: '/on-call' },
-] as const
+const navItems: Array<{
+  name: string
+  label: string
+  to: string
+  icon: Component
+}> = [
+  { name: 'team-members', label: 'Team Members', to: '/', icon: Users },
+  {
+    name: 'leave-requests',
+    label: 'Leave Requests',
+    to: '/leave-requests',
+    icon: LogOut,
+  },
+  { name: 'calendar', label: 'Calendar', to: '/calendar', icon: Calendar },
+  { name: 'on-call', label: 'On-Call', to: '/on-call', icon: PhoneCall },
+]
 
 watch(
   () => route.path,
@@ -33,7 +44,7 @@ watch(
 
 function navLinkClass(isActive: boolean): string {
   return cn(
-    'rounded-md px-3 py-2 text-sm font-medium transition-colors',
+    'inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
     isActive
       ? 'bg-accent text-accent-foreground'
       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
@@ -76,13 +87,12 @@ const pageTitle = computed(() => {
                   :class="navLinkClass(isActive)"
                   @click="navigate"
                 >
+                  <component :is="item.icon" class="size-4 shrink-0" />
                   {{ item.label }}
                 </a>
               </RouterLink>
+              <DarkModeToggle labeled />
             </nav>
-            <div class="px-2 pt-4">
-              <DarkModeToggle />
-            </div>
           </SheetContent>
         </Sheet>
 
@@ -103,6 +113,7 @@ const pageTitle = computed(() => {
               :class="navLinkClass(isActive)"
               @click="navigate"
             >
+              <component :is="item.icon" class="size-4 shrink-0" />
               {{ item.label }}
             </a>
           </RouterLink>
