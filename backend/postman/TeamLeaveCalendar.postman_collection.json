@@ -1,0 +1,286 @@
+{
+  "info": {
+    "name": "Team Leave Calendar API",
+    "description": "Run top to bottom, in order, with 'No Environment' selected in Postman (top-right dropdown) so no other project's Environment variables interfere. Every request URL is fully hardcoded to http://localhost:8000/api/... — make sure `php artisan serve` is running from the backend/ folder on port 8000.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "requestAId", "value": "" },
+    { "key": "requestBId", "value": "" },
+    { "key": "onCallLeaveId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - GET team-members (expect 4, id order)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "http://localhost:8000/api/team-members"
+      }
+    },
+    {
+      "name": "02 - GET leave-requests (initial list)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "http://localhost:8000/api/leave-requests"
+      }
+    },
+    {
+      "name": "03 - POST create Request A (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": "http://localhost:8000/api/leave-requests",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"team_member_id\": 1,\n  \"start_date\": \"2026-07-01\",\n  \"end_date\": \"2026-07-03\",\n  \"reason\": \"Request A\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "const id = json.data ? json.data.id : json.id;",
+              "if (id) pm.collectionVariables.set('requestAId', id);",
+              "console.log('requestAId =', id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - GET leave-requests filtered (?team_member_id=1&status=pending) (expect Request A)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "http://localhost:8000/api/leave-requests?team_member_id=1&status=pending"
+      }
+    },
+    {
+      "name": "05 - POST overlap with Request A (expect 422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": "http://localhost:8000/api/leave-requests",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"team_member_id\": 1,\n  \"start_date\": \"2026-07-02\",\n  \"end_date\": \"2026-07-04\",\n  \"reason\": \"Should overlap Request A\"\n}"
+        }
+      }
+    },
+    {
+      "name": "06 - POST end_date before start_date (expect 422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": "http://localhost:8000/api/leave-requests",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"team_member_id\": 2,\n  \"start_date\": \"2026-08-01\",\n  \"end_date\": \"2026-07-25\",\n  \"reason\": \"Invalid range\"\n}"
+        }
+      }
+    },
+    {
+      "name": "07 - POST non-existent team_member_id (expect 422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": "http://localhost:8000/api/leave-requests",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"team_member_id\": 999,\n  \"start_date\": \"2026-08-01\",\n  \"end_date\": \"2026-08-03\",\n  \"reason\": \"Bad member id\"\n}"
+        }
+      }
+    },
+    {
+      "name": "08 - POST create Request B (201, same member, non-overlapping with A)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": "http://localhost:8000/api/leave-requests",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"team_member_id\": 1,\n  \"start_date\": \"2026-07-10\",\n  \"end_date\": \"2026-07-12\",\n  \"reason\": \"Request B\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "const id = json.data ? json.data.id : json.id;",
+              "if (id) pm.collectionVariables.set('requestBId', id);",
+              "console.log('requestBId =', id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - PATCH Request A status -> approved (200)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": "http://localhost:8000/api/leave-requests/{{requestAId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"approved\"\n}"
+        }
+      }
+    },
+    {
+      "name": "10 - PATCH Request A invalid status (expect 422)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": "http://localhost:8000/api/leave-requests/{{requestAId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"bogus\"\n}"
+        }
+      }
+    },
+    {
+      "name": "11 - PATCH Request A partial end_date causing overlap with B (expect 422)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": "http://localhost:8000/api/leave-requests/{{requestAId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"end_date\": \"2026-07-11\"\n}"
+        },
+        "description": "Only end_date is sent. start_date should merge from A's existing value (2026-07-01), giving a merged range of 07-01..07-11, which overlaps Request B (07-10..07-12). This is the partial-update merge logic test."
+      }
+    },
+    {
+      "name": "12 - DELETE non-existent id 999999 (expect 404)",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "http://localhost:8000/api/leave-requests/999999"
+      }
+    },
+    {
+      "name": "13 - DELETE Request B (204, cleanup)",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "http://localhost:8000/api/leave-requests/{{requestBId}}"
+      }
+    },
+    {
+      "name": "14 - DELETE Request A (204, cleanup - run last for this group)",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "http://localhost:8000/api/leave-requests/{{requestAId}}"
+      }
+    },
+    {
+      "name": "15 - GET on-call (current week, no param)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "http://localhost:8000/api/on-call"
+      }
+    },
+    {
+      "name": "16 - GET on-call?week=2026-06-22 (baseline, expect conflict: false)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "http://localhost:8000/api/on-call?week=2026-06-22"
+      },
+      "description": "Run before step 17. Check the on_call_member in the response and adjust step 17's team_member_id to match if your rotation anchor puts someone else on-call that week."
+    },
+    {
+      "name": "17 - POST create approved-leave setup for on-call conflict (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": "http://localhost:8000/api/leave-requests",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"team_member_id\": 1,\n  \"start_date\": \"2026-06-23\",\n  \"end_date\": \"2026-06-25\",\n  \"reason\": \"On-call conflict setup\"\n}"
+        },
+        "description": "team_member_id 1 must match whoever step 16 showed as on_call_member for week 2026-06-22. Change this id if needed."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "const id = json.data ? json.data.id : json.id;",
+              "if (id) pm.collectionVariables.set('onCallLeaveId', id);",
+              "console.log('onCallLeaveId =', id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 - PATCH on-call setup leave status -> approved (200)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": "http://localhost:8000/api/leave-requests/{{onCallLeaveId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"approved\"\n}"
+        }
+      }
+    },
+    {
+      "name": "19 - GET on-call?week=2026-06-22 (expect conflict: true)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "http://localhost:8000/api/on-call?week=2026-06-22"
+      }
+    },
+    {
+      "name": "20 - DELETE on-call setup leave (204, cleanup)",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "http://localhost:8000/api/leave-requests/{{onCallLeaveId}}"
+      }
+    }
+  ]
+}

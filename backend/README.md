@@ -1,58 +1,83 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Team Leave Calendar — Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+REST API for the Team Leave Calendar with On-Call Rotation assessment project.
 
-## About Laravel
+Built with **Laravel 13**, a pure JSON API — no Blade, no Inertia, no authentication.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Requirements
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **PHP 8.4+** (the committed `composer.lock` pins Symfony packages that require PHP 8.4.1 or newer — PHP 8.3 will fail `composer install`)
+- Composer 2.x
+- SQLite support (`pdo_sqlite` extension — bundled with most PHP installs by default)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Setup
 
 ```bash
-composer require laravel/boost --dev
+git clone <repo-url>
+cd team-leave-calendar/backend
 
-php artisan boost:install
+composer install
+cp .env.example .env
+php artisan key:generate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+The `.env.example` already sets `DB_CONNECTION=sqlite`. Create the database file and run migrations with seed data:
 
-## Contributing
+```bash
+touch database/database.sqlite
+php artisan migrate --seed
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+This seeds four team members in a fixed order — **Alice, Bob, Charlie, Diana** — which also defines the on-call rotation sequence.
 
-## Code of Conduct
+### On-call rotation anchor
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+The rotation is calculated relative to `ONCALL_START_DATE` in `.env` (must be a **Monday**). This is set to a recent Monday by default. Change it if you want week 0 of the rotation to start on a different date:
 
-## Security Vulnerabilities
+```env
+ONCALL_START_DATE=2026-06-22
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Running the app
 
-## License
+```bash
+php artisan serve
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+API is now available at `http://localhost:8000/api`. See [API.md](./API.md) for the full endpoint reference.
+
+## Running tests
+
+```bash
+php artisan test
+```
+
+15 Pest feature tests cover overlap validation, status transitions, and on-call rotation/conflict logic, using an in-memory SQLite database (configured in `phpunit.xml`, independent of your local `.env`).
+
+CI runs the same test suite automatically on every push/PR via GitHub Actions (`.github/workflows/ci.yml`).
+
+## Manual API testing (Postman)
+
+A ready-to-import collection is included at `postman/TeamLeaveCalendar.postman_collection.json`. Import it into Postman and run the requests **in order, 01 through 20** — later requests depend on records created by earlier ones (ids are captured automatically into collection variables). Make sure:
+- `php artisan serve` is running on port 8000
+- No Postman **Environment** is selected (top-right dropdown → "No Environment") — an active Environment with its own `baseUrl`/other variables from a different project can silently override the request URLs
+
+## Assumptions
+
+- **Overlap blocking rule:** only leave requests with status `pending` or `approved` count when checking for overlapping date ranges for the same team member. A `rejected` request never blocks a new request for the same period.
+- **Date ranges are inclusive on both ends** — two ranges overlap if `start_date <= other.end_date AND end_date >= other.start_date`. A request ending on day X and another starting on day X+1 are **not** considered overlapping (adjacent, not overlapping).
+- **On-call rotation** is purely derived (week index modulo team member count) — there is no database table for it, and no support for manual overrides or reassignment.
+- **On-call conflict** is flagged only when the on-call person has an **approved** leave request overlapping that week. A pending or rejected leave does not flag a conflict.
+- **No authentication** — the task didn't require it. Laravel Sanctum is installed (via `php artisan install:api`) but entirely unused; no routes are protected.
+- **No pagination** — endpoints return full collections, given the small expected data volume for this assessment.
+
+## What wasn't completed
+
+- **Docker** — skipped given the time budget. Environment consistency is handled instead by documenting the exact PHP version requirement (8.4+) above, and pinning it via `composer.lock`.
+- **Automatic on-call reassignment** when the on-call person is on leave — out of scope per the task description; the API only flags the conflict, it doesn't reassign.
+
+## Optional improvements added
+
+- **Pest test suite** (15 feature tests, 58 assertions) covering all core business rules
+- **CI/CD** via GitHub Actions — runs the full test suite on every push/PR
+- **REST API documentation** — see [API.md](./API.md)
