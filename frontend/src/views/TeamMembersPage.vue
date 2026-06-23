@@ -11,7 +11,7 @@ import { useTeamMembers } from '@/composables/useTeamMembers'
 
 const { teamMembers, loading, error, fetch, retry } = useTeamMembers()
 
-const skeletonCount = 6
+const skeletonCount = 4
 
 onMounted(() => {
   void fetch()
