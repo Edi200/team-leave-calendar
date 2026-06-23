@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.cursor/
+.idea/
+
+# Logs
+*.log
+
+# Env safety net (backend/frontend already ignore their own)
+.env
+.env.*
+!.env.example
